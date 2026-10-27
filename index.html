@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Lunar &amp; Planetary Phase Simulator</title>
+  <meta name="description" content="See the real phase of the Moon and planets for any date, and model reflected-light phase curves of exoplanets.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌗</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.27.0/plotly.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Lunar &amp; Planetary Phase Simulator</h1>
+      <p>The real phase of the Moon and planets for any date, and the reflected light of exoplanets.</p>
+    </div>
+    <div class="topbar-actions">
+      <div class="tabs" role="tablist" aria-label="Mode">
+        <button role="tab" id="tab-moon" data-mode="moon" aria-selected="true">Moon</button>
+        <button role="tab" id="tab-planets" data-mode="planets" aria-selected="false">Planets</button>
+        <button role="tab" id="tab-exo" data-mode="exo" aria-selected="false">Exoplanets</button>
+      </div>
+      <button id="themeToggle" class="icon-btn" type="button" aria-label="Switch to dark theme" title="Switch theme">☾</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="controls" aria-label="Controls">
+      <!-- date and time: Moon and planets -->
+      <section class="ctl-section" data-show="moon planets">
+        <h2>Date and time (UTC)</h2>
+        <input id="dateInput" type="datetime-local" aria-label="Date and time in UTC">
+        <div class="btn-grid">
+          <button type="button" class="step" data-step="-1">−1 day</button>
+          <button type="button" class="step" data-step="-0.041666667">−1 hour</button>
+          <button type="button" class="step" data-step="0.041666667">+1 hour</button>
+          <button type="button" class="step" data-step="1">+1 day</button>
+        </div>
+        <div class="row">
+          <button id="nowBtn" type="button" class="text-btn">Now</button>
+          <span class="spacer"></span>
+          <label class="mini">Time-lapse
+            <select id="speedSelect">
+              <option value="0.0416667">1 hour / s</option>
+              <option value="0.25">6 hours / s</option>
+              <option value="1" selected>1 day / s</option>
+              <option value="7">1 week / s</option>
+            </select>
+          </label>
+          <button id="playBtn" type="button" class="play" aria-label="Play time-lapse">▶</button>
+        </div>
+      </section>
+
+      <section class="ctl-section" data-show="moon">
+        <h2>Jump to</h2>
+        <div class="btn-grid">
+          <button type="button" class="jump" data-target="0">New Moon</button>
+          <button type="button" class="jump" data-target="90">First quarter</button>
+          <button type="button" class="jump" data-target="180">Full Moon</button>
+          <button type="button" class="jump" data-target="270">Last quarter</button>
+        </div>
+        <p class="note">Jumps to the next phase after the current date.</p>
+      </section>
+
+      <section class="ctl-section" data-show="planets">
+        <h2>Planet</h2>
+        <div class="seg" role="radiogroup" aria-label="Planet" id="planetSeg">
+          <button type="button" data-planet="mercury">Mercury</button>
+          <button type="button" data-planet="venus" aria-pressed="true">Venus</button>
+          <button type="button" data-planet="mars">Mars</button>
+          <button type="button" data-planet="jupiter">Jupiter</button>
+        </div>
+        <label class="switch"><input type="checkbox" id="trueSize" checked> <span>Draw at true apparent size</span></label>
+      </section>
+
+      <section class="ctl-section" data-show="moon planets">
+        <h2>Orientation</h2>
+        <div class="seg" role="radiogroup" aria-label="Orientation" id="orientSeg">
+          <button type="button" data-orient="north" aria-pressed="true">North up</button>
+          <button type="button" data-orient="sky">As in my sky</button>
+        </div>
+        <div class="loc-grid">
+          <label class="field">Latitude (°) <input id="latInput" type="number" step="any" min="-90" max="90" placeholder="e.g. 51.48"></label>
+          <label class="field">Longitude (° E) <input id="lonInput" type="number" step="any" min="-180" max="180" placeholder="e.g. -0.01"></label>
+        </div>
+        <button id="geoBtn" type="button" class="text-btn">Use my location</button>
+        <p class="note" id="locNote">“As in my sky” turns the disk as you would see it above your horizon. It needs your latitude and longitude.</p>
+      </section>
+
+      <!-- exoplanets -->
+      <section class="ctl-section" data-show="exo">
+        <h2>Target</h2>
+        <select id="exoSelect" aria-label="Exoplanet"></select>
+        <p class="note" id="exoNote"></p>
+      </section>
+      <section class="ctl-section" data-show="exo">
+        <h2>Parameters</h2>
+        <div class="param-grid" id="exoParams"></div>
+        <p class="note">Change any value to model your own planet. a is computed from the period and stellar mass.</p>
+      </section>
+      <section class="ctl-section" data-show="exo">
+        <h2>Orbit position</h2>
+        <div class="ctl">
+          <div class="ctl-top"><label for="exoPhase">Orbital phase</label><output id="exoPhaseOut" class="ctl-value"></output></div>
+          <input type="range" id="exoPhase" min="0" max="1" step="0.001" value="0.35">
+        </div>
+        <div class="row">
+          <span class="note" style="margin:0">0 = transit, 0.5 = secondary eclipse</span>
+          <span class="spacer"></span>
+          <button id="exoPlay" type="button" class="play" aria-label="Play orbit">▶</button>
+        </div>
+        <label class="switch"><input type="checkbox" id="exoNoise"> <span>Simulated observations</span></label>
+        <div id="noiseBox" class="ctl" hidden>
+          <div class="ctl-top"><label for="exoSigma">Noise per point</label><span class="ctl-value"><input type="number" id="exoSigmaNum" class="num" step="any" min="0.1" max="10000" value="20"><small>ppm</small></span></div>
+          <input type="range" id="exoSigma" min="0" max="3" step="0.01" value="1.301">
+        </div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="hero">
+        <figure class="sky">
+          <canvas id="skyCanvas" aria-label="The illuminated disk"></canvas>
+          <figcaption id="skyCaption"></figcaption>
+        </figure>
+        <div class="readout-panel">
+          <p class="phase-name" id="phaseName">—</p>
+          <p class="phase-sub" id="phaseSub"></p>
+          <dl class="readouts" id="readouts"></dl>
+        </div>
+      </section>
+
+      <section class="panel" data-show="moon">
+        <div class="panel-head"><h2>This month</h2><span class="hint">Click a day to jump to it</span></div>
+        <div class="month-wrap"><canvas id="monthCanvas" aria-label="Moon phases for the surrounding days"></canvas></div>
+        <div class="upcoming" id="upcoming"></div>
+      </section>
+
+      <section class="panel" data-show="moon">
+        <div class="panel-head"><h2>Illuminated fraction</h2><span class="hint">Click the curve to jump in time</span></div>
+        <div id="moonPlot" class="plot"></div>
+      </section>
+
+      <section class="panel two-col" data-show="planets">
+        <div>
+          <div class="panel-head"><h2>Seen from above</h2><span class="hint">Sun, Earth and planet today</span></div>
+          <canvas id="orbitCanvas" class="orbit-canvas" aria-label="Positions of the Sun, Earth and planet"></canvas>
+        </div>
+        <div>
+          <div class="panel-head"><h2>Over one synodic period</h2><span class="hint">Click to jump in time</span></div>
+          <div id="planetPlot" class="plot tall"></div>
+        </div>
+      </section>
+
+      <section class="panel" data-show="exo">
+        <div class="panel-head"><h2>Reflected-light phase curve</h2><span class="hint">Click to move the planet along its orbit</span></div>
+        <div id="exoPlot" class="plot"></div>
+      </section>
+      <section class="panel two-col" data-show="exo">
+        <div>
+          <div class="panel-head"><h2>Orbit from above</h2><span class="hint">Observer is below</span></div>
+          <canvas id="exoOrbitCanvas" class="orbit-canvas" aria-label="Top-down view of the exoplanet orbit"></canvas>
+        </div>
+        <div class="explain">
+          <h2>What the curve shows</h2>
+          <p>A planet reflects starlight like the Moon: we see a thin crescent near transit (phase 0) and a full disk just before and after the secondary eclipse (phase 0.5), when it passes behind the star.</p>
+          <p>The flux ratio is F<sub>p</sub>/F<sub>★</sub> = A<sub>g</sub> (R<sub>p</sub>/r)² Φ(α). Because R<sub>p</sub>/r is tiny, even a reflective hot Jupiter adds only tens of ppm. Earth-sized planets in the habitable zone add less than 0.1 ppm.</p>
+        </div>
+      </section>
+
+      <p class="footnote" id="footnote"></p>
+      <footer class="footer">
+        <span>Lunar &amp; Planetary Phase Simulator by <a href="https://github.com/Jiqbal-astro">Javed Iqbal</a></span>
+        <a href="https://github.com/Jiqbal-astro/lunar-planetary-phase-simulator">Source on GitHub</a>
+      </footer>
+    </main>
+  </div>
+
+  <script src="js/astro.js"></script>
+  <script src="js/phase.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

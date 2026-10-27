@@ -1,0 +1,15 @@
+{
+  "name": "lunar-planetary-phase-simulator",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Lunar and planetary phase simulator (static site, no build step).",
+  "scripts": {
+    "test": "node --test",
+    "test:browser": "python tests/test_browser.py",
+    "screenshots": "python tools/screenshots.py"
+  },
+  "devDependencies": {
+    "plotly.js-dist-min": "2.27.0"
+  },
+  "license": "MIT"
+}
